@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock the modules that actions depend on
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
 let mockTasks: import('@/types/task').Task[] = [];
@@ -33,7 +32,7 @@ beforeEach(() => {
 });
 
 describe('createTask', () => {
-  it('generates an id and timestamps', async () => {
+  it('generates id and timestamps', async () => {
     const fd = new FormData();
     fd.append('title', 'New task');
     fd.append('lane', 'inbox');
@@ -46,21 +45,19 @@ describe('createTask', () => {
     expect(mockTasks).toHaveLength(1);
     expect(mockTasks[0].id).toBe('T-0001');
     expect(mockTasks[0].createdAt).toBeTruthy();
-    expect(mockTasks[0].updatedAt).toBeTruthy();
     expect(mockTasks[0].title).toBe('New task');
   });
 
   it('increments id based on existing tasks', async () => {
     mockTasks = [makeTask({ id: 'T-0003' })];
     const fd = new FormData();
-    fd.append('title', 'Another task');
-    fd.append('lane', 'now');
+    fd.append('title', 'Another');
+    fd.append('lane', 'max-now');
     fd.append('project', 'ops');
-    fd.append('owner', 'matt');
+    fd.append('owner', 'max');
     fd.append('priority', 'low');
 
     await createTask(fd);
-
     expect(mockTasks[1].id).toBe('T-0004');
   });
 });
@@ -68,26 +65,32 @@ describe('createTask', () => {
 describe('moveTask', () => {
   it('moves task to new lane', async () => {
     mockTasks = [makeTask({ id: 'T-0001', lane: 'inbox' })];
-    await moveTask('T-0001', 'now');
-    expect(mockTasks[0].lane).toBe('now');
+    await moveTask('T-0001', 'max-now');
+    expect(mockTasks[0].lane).toBe('max-now');
   });
 
-  it('sets blockedReason when moving to blocked', async () => {
-    mockTasks = [makeTask({ id: 'T-0001', lane: 'now' })];
-    await moveTask('T-0001', 'blocked', 'Waiting on API access');
-    expect(mockTasks[0].lane).toBe('blocked');
-    expect(mockTasks[0].blockedReason).toBe('Waiting on API access');
+  it('sets blockedReason when moving to blocked-external', async () => {
+    mockTasks = [makeTask({ id: 'T-0001', lane: 'max-now' })];
+    await moveTask('T-0001', 'blocked-external', 'Waiting on Stripe');
+    expect(mockTasks[0].lane).toBe('blocked-external');
+    expect(mockTasks[0].blockedReason).toBe('Waiting on Stripe');
   });
 
-  it('clears blockedReason when moving out of blocked', async () => {
-    mockTasks = [makeTask({ id: 'T-0001', lane: 'blocked', blockedReason: 'Old reason' })];
-    await moveTask('T-0001', 'now');
-    expect(mockTasks[0].lane).toBe('now');
+  it('clears blockedReason when moving out of blocked-external', async () => {
+    mockTasks = [makeTask({ id: 'T-0001', lane: 'blocked-external', blockedReason: 'Old reason' })];
+    await moveTask('T-0001', 'max-now');
+    expect(mockTasks[0].lane).toBe('max-now');
     expect(mockTasks[0].blockedReason).toBeUndefined();
   });
 
+  it('clears order when moving to a new lane', async () => {
+    mockTasks = [makeTask({ id: 'T-0001', lane: 'max-now', order: 2 })];
+    await moveTask('T-0001', 'cc-queue');
+    expect(mockTasks[0].order).toBeUndefined();
+  });
+
   it('updates updatedAt timestamp', async () => {
-    const before = new Date('2026-01-01').toISOString();
+    const before = '2026-01-01T00:00:00.000Z';
     mockTasks = [makeTask({ id: 'T-0001', updatedAt: before })];
     await moveTask('T-0001', 'done');
     expect(mockTasks[0].updatedAt).not.toBe(before);

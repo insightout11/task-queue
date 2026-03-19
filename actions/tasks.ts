@@ -18,12 +18,7 @@ export async function createTask(formData: FormData) {
   const input = CreateTaskSchema.parse(raw);
   const tasks = readTasks();
   const now = new Date().toISOString();
-  tasks.push({
-    ...input,
-    id: generateId(tasks),
-    createdAt: now,
-    updatedAt: now,
-  });
+  tasks.push({ ...input, id: generateId(tasks), createdAt: now, updatedAt: now });
   writeTasks(tasks);
   revalidatePath('/', 'layout');
 }
@@ -34,11 +29,7 @@ export async function updateTask(formData: FormData) {
   const tasks = readTasks();
   const idx = tasks.findIndex((t) => t.id === input.id);
   if (idx === -1) throw new Error(`Task ${input.id} not found`);
-  tasks[idx] = {
-    ...tasks[idx],
-    ...input,
-    updatedAt: new Date().toISOString(),
-  };
+  tasks[idx] = { ...tasks[idx], ...input, updatedAt: new Date().toISOString() };
   writeTasks(tasks);
   revalidatePath('/', 'layout');
 }
@@ -50,7 +41,8 @@ export async function moveTask(id: string, lane: Lane, blockedReason?: string) {
   tasks[idx] = {
     ...tasks[idx],
     lane,
-    blockedReason: lane === 'blocked' ? blockedReason : undefined,
+    order: undefined,       // clear explicit order when moving to a new lane
+    blockedReason: lane === 'blocked-external' ? blockedReason : undefined,
     updatedAt: new Date().toISOString(),
   };
   writeTasks(tasks);

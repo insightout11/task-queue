@@ -2,32 +2,42 @@
 
 import { useState, useTransition } from 'react';
 import type { Task, Lane } from '@/types/task';
-import { LANES, LANE_LABELS, PRIORITY_DOT } from '@/types/task';
+import { LANE_LABELS, PRIORITY_DOT, ACTIONABLE_LANES, isCCReady } from '@/types/task';
 import { ProjectBadge, OwnerBadge } from '@/components/ui/Badge';
 import { moveTask, deleteTask } from '@/actions/tasks';
 
 interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
+  isNext?: boolean;
 }
 
 const LANE_QUICK_MOVES: Record<Lane, Lane[]> = {
-  inbox: ['now', 'next'],
-  now: ['done', 'blocked', 'next'],
-  next: ['now', 'done'],
-  waiting: ['now', 'next', 'done'],
-  blocked: ['now', 'next'],
-  done: ['now', 'next'],
+  'inbox':               ['max-now', 'cc-queue', 'needs-matt-computer', 'waiting-matt'],
+  'max-now':             ['done', 'cc-queue', 'needs-matt-computer', 'waiting-matt'],
+  'cc-queue':            ['done', 'max-now', 'blocked-external'],
+  'needs-matt-computer': ['done', 'max-now', 'waiting-matt'],
+  'waiting-matt':        ['max-now', 'needs-matt-computer', 'done'],
+  'blocked-external':    ['max-now', 'cc-queue', 'needs-matt-computer'],
+  'done':                ['max-now', 'cc-queue'],
 };
 
-export function TaskCard({ task, onEdit }: TaskCardProps) {
+// Subtle left-border accent per lane
+const CARD_ACCENT: Partial<Record<Lane, string>> = {
+  'max-now':             'border-l-2 border-emerald-500',
+  'needs-matt-computer': 'border-l-2 border-blue-500',
+  'waiting-matt':        'border-l-2 border-amber-500',
+  'blocked-external':    'border-l-2 border-red-600',
+};
+
+export function TaskCard({ task, onEdit, isNext = false }: TaskCardProps) {
   const [isPending, startTransition] = useTransition();
   const [showActions, setShowActions] = useState(false);
 
   function handleMove(lane: Lane) {
-    if (lane === 'blocked') {
-      const reason = window.prompt('Reason blocked?', task.blockedReason ?? '');
-      if (reason === null) return; // cancelled
+    if (lane === 'blocked-external') {
+      const reason = window.prompt('What is the external blocker?', task.blockedReason ?? '');
+      if (reason === null) return;
       startTransition(() => moveTask(task.id, lane, reason));
     } else {
       startTransition(() => moveTask(task.id, lane));
@@ -39,18 +49,23 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
     startTransition(() => deleteTask(task.id));
   }
 
-  const nowHighlight =
-    task.lane === 'now' && task.priority === 'high'
-      ? 'border-l-2 border-indigo-400'
-      : '';
+  const accent = CARD_ACCENT[task.lane] ?? '';
+  const ccReady = task.lane === 'cc-queue' ? isCCReady(task) : null;
 
   return (
     <div
-      className={`bg-neutral-800 rounded-lg p-3 flex flex-col gap-2 opacity-${isPending ? '50' : '100'} transition-opacity ${nowHighlight}`}
+      className={`bg-neutral-800 rounded-lg p-3 flex flex-col gap-2 transition-opacity ${isPending ? 'opacity-50' : 'opacity-100'} ${accent}`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
-      {/* Title row */}
+      {/* Next indicator — first card in an actionable lane */}
+      {isNext && (
+        <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 leading-none">
+          ↑ next
+        </span>
+      )}
+
+      {/* Title + priority dot */}
       <div className="flex items-start justify-between gap-2">
         <button
           className="text-sm text-white font-medium text-left hover:text-indigo-300 transition-colors leading-snug"
@@ -58,26 +73,58 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
         >
           {task.title}
         </button>
-        <span className={`flex-shrink-0 w-2 h-2 mt-1 rounded-full ${PRIORITY_DOT[task.priority]}`} title={task.priority} />
+        <span
+          className={`flex-shrink-0 w-2 h-2 mt-1.5 rounded-full ${PRIORITY_DOT[task.priority]}`}
+          title={task.priority}
+        />
       </div>
 
-      {/* Badges */}
+      {/* Project + owner badges */}
       <div className="flex flex-wrap gap-1">
         <ProjectBadge project={task.project} />
         <OwnerBadge owner={task.owner} />
       </div>
+
+      {/* Required action — shown prominently for routing lanes */}
+      {task.requiredAction && (
+        <p className="text-xs text-white/80 leading-snug bg-neutral-700 rounded px-2 py-1">
+          {task.lane === 'needs-matt-computer' ? '⌨ ' : task.lane === 'waiting-matt' ? '? ' : ''}
+          {task.requiredAction}
+        </p>
+      )}
 
       {/* Status note */}
       {task.statusNote && (
         <p className="text-xs text-neutral-400 leading-snug">{task.statusNote}</p>
       )}
 
-      {/* Blocked reason */}
-      {task.blockedReason && (
-        <p className="text-xs text-red-400 leading-snug">⛔ {task.blockedReason}</p>
+      {/* Spec path — shown for CC Queue */}
+      {task.specPath && (
+        <p className="text-[11px] text-violet-400 font-mono leading-snug truncate" title={task.specPath}>
+          ◈ {task.specPath}
+        </p>
       )}
 
-      {/* Quick-move buttons */}
+      {/* Definition of done — shown for CC Queue */}
+      {task.lane === 'cc-queue' && task.definitionOfDone && (
+        <p className="text-[11px] text-neutral-500 leading-snug">
+          Done: {task.definitionOfDone}
+        </p>
+      )}
+
+      {/* CC not-ready warning */}
+      {ccReady === false && (
+        <p className="text-[11px] text-amber-400 leading-snug">
+          ⚠ Not CC-ready — add spec path + definition of done
+        </p>
+      )}
+
+      {/* External blocker */}
+      {task.blockedReason && (
+        <p className="text-xs text-red-400 leading-snug">✕ {task.blockedReason}</p>
+      )}
+
+      {/* Quick-move buttons (hover) */}
       {showActions && (
         <div className="flex flex-wrap gap-1 pt-1 border-t border-neutral-700">
           {LANE_QUICK_MOVES[task.lane].map((lane) => (
@@ -93,7 +140,7 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
           <button
             onClick={handleDelete}
             disabled={isPending}
-            className="text-xs px-2 py-0.5 rounded bg-red-900 hover:bg-red-800 text-red-200 transition-colors ml-auto"
+            className="text-xs px-2 py-0.5 rounded bg-red-950 hover:bg-red-900 text-red-300 transition-colors ml-auto"
           >
             Delete
           </button>
