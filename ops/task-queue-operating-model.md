@@ -1,6 +1,6 @@
 # Task Queue — Operating Model
 
-**Version:** 3
+**Version:** 4
 **Authors:** Max, Matt
 **Purpose:** This queue answers one question: *what can happen next, who can do it, and what kind of action path does it need?*
 
@@ -223,8 +223,45 @@ Inbox should be cleared within a session, not allowed to accumulate. Every Inbox
 
 ## Source of truth
 
-- **File:** `ops/task-queue.json`
+- **Canonical file:** `~/clawd/ops/task-queue.json` — lives **outside any git repo**, in your home directory
 - **Format:** `{ "tasks": Task[] }` — flat array, no nesting
 - **Write strategy:** Write to `.tmp` then `renameSync` to avoid partial-write corruption
-- **Git-backed:** Yes — committed alongside the codebase
 - **No database:** Intentional. Single-user, synchronous I/O, always inspectable.
+
+### How saves work
+
+Every mutation (move, edit, create, delete) writes directly to the canonical file immediately. No git push required. The UI shows the source path and a "Saved HH:MM:SS" timestamp at the bottom of the board after each change.
+
+### How to run
+
+```
+cd task-queue
+npm run dev
+```
+
+Open `http://localhost:3000`. One running instance = one board = one truth.
+
+### Custom path
+
+Override the canonical path by setting `TASK_QUEUE_FILE` in `.env.local`:
+
+```
+TASK_QUEUE_FILE=/path/to/your/task-queue.json
+```
+
+### Git — optional snapshots only
+
+Git is **not** in the normal read/write path. The repo contains:
+- The app source code
+- `ops/task-queue.json` — **legacy/snapshot only** (used once for initial migration)
+
+After first launch, the app migrates `ops/task-queue.json` → `~/clawd/ops/task-queue.json` automatically. The repo file is then stale — do not treat it as the live queue.
+
+Use git for:
+- Deploying app code changes
+- Explicit snapshots of the queue state (optional, manual)
+
+Do **not** use git for:
+- Routine task updates
+- Lane moves
+- Daily queue use

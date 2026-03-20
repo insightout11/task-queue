@@ -8,6 +8,7 @@ import { createTask, updateTask } from '@/actions/tasks';
 interface TaskModalProps {
   task: Task | null;
   onClose: () => void;
+  onSaved?: () => void;
 }
 
 const input = 'w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500 placeholder-neutral-600';
@@ -15,7 +16,7 @@ const inputWarn = 'w-full bg-neutral-800 border border-amber-700 rounded-lg px-3
 const label = 'text-xs text-neutral-500 uppercase tracking-wide mb-1 block';
 const labelWarn = 'text-xs text-amber-500 uppercase tracking-wide mb-1 block';
 
-export function TaskModal({ task, onClose }: TaskModalProps) {
+export function TaskModal({ task, onClose, onSaved }: TaskModalProps) {
   const [isPending, startTransition] = useTransition();
   const [lane, setLane] = useState<Lane>(task?.lane ?? 'inbox');
   const titleRef = useRef<HTMLInputElement>(null);
@@ -40,6 +41,7 @@ export function TaskModal({ task, onClose }: TaskModalProps) {
     }
     startTransition(async () => {
       if (task) { await updateTask(fd); } else { await createTask(fd); }
+      onSaved?.();
       onClose();
     });
   }

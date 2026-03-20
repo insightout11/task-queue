@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { Task, Lane } from '@/types/task';
 import { LANES, ACTIONABLE_LANES } from '@/types/task';
@@ -11,10 +11,23 @@ import { TaskModal } from '@/components/TaskModal';
 
 interface BoardProps {
   tasks: Task[];
+  storePath: string;
 }
 
-export function Board({ tasks }: BoardProps) {
+function fmtSaved(d: Date): string {
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+// Shorten the path for display: replace home dir with ~
+function displayPath(p: string): string {
+  if (typeof window === 'undefined') return p;
+  // On the client the actual home dir isn't known, so just show as-is
+  return p;
+}
+
+export function Board({ tasks, storePath }: BoardProps) {
   const [editingTask, setEditingTask] = useState<Task | null | 'new'>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const searchParams = useSearchParams();
 
   const project  = searchParams.get('project')  ?? '';
@@ -24,12 +37,14 @@ export function Board({ tasks }: BoardProps) {
   const lane     = searchParams.get('lane')     ?? '';
   const view     = searchParams.get('view')     ?? '';
 
+  const onSaved = useCallback(() => setLastSaved(new Date()), []);
+
   // Resolve lane scope from view or lane param (view takes precedence)
   function laneScope(task: Task): boolean {
     if (view === 'max-only')    return task.lane === 'max-now';
     if (view === 'needs-matt')  return task.lane === 'needs-matt-computer' || task.lane === 'waiting-matt';
     if (view === 'at-computer') return task.lane === 'needs-matt-computer';
-    if (view === 'next-up')     return true; // next-up trims after sorting, not here
+    if (view === 'next-up')     return true;
     if (lane)                   return task.lane === (lane as Lane);
     return true;
   }
@@ -37,9 +52,9 @@ export function Board({ tasks }: BoardProps) {
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
       if (!laneScope(t)) return false;
-      if (project  && t.project  !== project)                              return false;
-      if (owner    && t.owner    !== owner)                                return false;
-      if (priority && t.priority !== priority)                             return false;
+      if (project  && t.project  !== project)                                return false;
+      if (owner    && t.owner    !== owner)                                  return false;
+      if (priority && t.priority !== priority)                               return false;
       if (search   && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
@@ -48,7 +63,6 @@ export function Board({ tasks }: BoardProps) {
 
   const byLane = useMemo(() => {
     const sorted = sortedByLane(filtered);
-    // next-up: trim each actionable lane to its first item
     if (view === 'next-up') {
       const trimmed = { ...sorted };
       for (const al of ACTIONABLE_LANES) {
@@ -73,14 +87,30 @@ export function Board({ tasks }: BoardProps) {
             lane={l}
             tasks={byLane[l]}
             onEdit={setEditingTask}
+            onSaved={onSaved}
           />
         ))}
+      </div>
+
+      {/* Source indicator */}
+      <div className="flex items-center gap-2 pt-2 border-t border-neutral-800 flex-shrink-0 mt-2">
+        <span className="text-[11px] text-neutral-600 font-mono truncate flex-1" title={storePath}>
+          ⊞ {storePath}
+        </span>
+        {lastSaved ? (
+          <span className="text-[11px] text-emerald-600 flex-shrink-0">
+            Saved {fmtSaved(lastSaved)}
+          </span>
+        ) : (
+          <span className="text-[11px] text-neutral-700 flex-shrink-0">No changes yet</span>
+        )}
       </div>
 
       {modalOpen && (
         <TaskModal
           task={modalTask}
           onClose={() => setEditingTask(null)}
+          onSaved={onSaved}
         />
       )}
     </>

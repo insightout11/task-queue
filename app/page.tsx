@@ -1,11 +1,12 @@
 import { Suspense } from 'react';
-import { readTasks } from '@/lib/task-store';
+import { readTasks, getStorePath } from '@/lib/task-store';
 import { Board } from '@/components/Board';
 
 export const dynamic = 'force-dynamic';
 
 export default function Home() {
   const tasks = readTasks();
+  const storePath = getStorePath();
 
   return (
     <div className="flex flex-col h-full p-4">
@@ -15,7 +16,7 @@ export default function Home() {
       </header>
       <div className="flex flex-col flex-1 min-h-0">
         <Suspense>
-          <Board tasks={tasks} />
+          <Board tasks={tasks} storePath={storePath} />
         </Suspense>
       </div>
     </div>

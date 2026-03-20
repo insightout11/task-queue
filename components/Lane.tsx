@@ -12,13 +12,14 @@ interface LaneProps {
   lane: LaneType;
   tasks: Task[];
   onEdit: (task: Task) => void;
+  onSaved?: () => void;
 }
 
 const LANE_BG: Partial<Record<LaneType, string>> = {
   'max-now': 'bg-emerald-950/20',
 };
 
-export function Lane({ lane, tasks, onEdit }: LaneProps) {
+export function Lane({ lane, tasks, onEdit, onSaved }: LaneProps) {
   const isActionable = ACTIONABLE_LANES.includes(lane);
   const bg = LANE_BG[lane] ?? '';
 
@@ -49,6 +50,7 @@ export function Lane({ lane, tasks, onEdit }: LaneProps) {
             task={task}
             onEdit={onEdit}
             isNext={isActionable && index === 0}
+            onSaved={onSaved}
           />
         ))}
       </div>

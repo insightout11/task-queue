@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect, useRef } from 'react';
 import type { Task, Lane } from '@/types/task';
 import { LANE_LABELS, PRIORITY_DOT, ACTIONABLE_LANES, isCCReady } from '@/types/task';
 import { ProjectBadge, OwnerBadge } from '@/components/ui/Badge';
@@ -10,6 +10,7 @@ interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
   isNext?: boolean;
+  onSaved?: () => void;
 }
 
 const LANE_QUICK_MOVES: Record<Lane, Lane[]> = {
@@ -30,9 +31,15 @@ const CARD_ACCENT: Partial<Record<Lane, string>> = {
   'blocked-external':    'border-l-2 border-red-600',
 };
 
-export function TaskCard({ task, onEdit, isNext = false }: TaskCardProps) {
+export function TaskCard({ task, onEdit, isNext = false, onSaved }: TaskCardProps) {
   const [isPending, startTransition] = useTransition();
   const [showActions, setShowActions] = useState(false);
+  const prevPendingRef = useRef(false);
+
+  useEffect(() => {
+    if (prevPendingRef.current && !isPending) onSaved?.();
+    prevPendingRef.current = isPending;
+  }, [isPending, onSaved]);
 
   function handleMove(lane: Lane) {
     if (lane === 'blocked-external') {
