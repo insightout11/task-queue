@@ -14,11 +14,12 @@
     {
       "id": "T-0002",
       "title": "Decide: free tier on LessonCaptain — yes or no?",
-      "lane": "inbox",
+      "lane": "waiting-matt",
       "project": "lessoncaptain",
-      "owner": "max",
+      "owner": "matt",
       "priority": "high",
-      "statusNote": "Blocking the pricing page build in CC Queue",
+      "requiredAction": "Decide: does LessonCaptain have a free tier? Yes or no — then T-0007 pricing page can be specced",
+      "statusNote": "Blocking the pricing page build (T-0007)",
       "createdAt": "2026-03-19T09:00:00.000Z",
       "updatedAt": "2026-03-19T09:00:00.000Z"
     },
@@ -73,12 +74,12 @@
     {
       "id": "T-0007",
       "title": "Build LessonCaptain pricing page",
-      "lane": "cc-queue",
+      "lane": "waiting-matt",
       "project": "lessoncaptain",
-      "owner": "claude-code",
+      "owner": "matt",
       "priority": "medium",
-      "order": 2,
-      "statusNote": "Waiting on free tier decision before spec can be finalized",
+      "requiredAction": "Confirm free tier decision (T-0002) so spec can be finalized before routing to CC Queue",
+      "statusNote": "Waiting on T-0010 pricing tier confirmation — cannot spec until tiers are locked",
       "createdAt": "2026-03-18T11:00:00.000Z",
       "updatedAt": "2026-03-18T11:00:00.000Z"
     },
@@ -90,6 +91,7 @@
       "owner": "matt",
       "priority": "high",
       "order": 1,
+      "computerContext": "browser + Stripe login",
       "requiredAction": "Log into Stripe test dashboard, run checkout with test card 4242, confirm webhook fires",
       "createdAt": "2026-03-18T14:00:00.000Z",
       "updatedAt": "2026-03-18T14:00:00.000Z"
@@ -102,6 +104,7 @@
       "owner": "matt",
       "priority": "low",
       "order": 2,
+      "computerContext": "local file + YouTube login",
       "requiredAction": "Upload prepared MP4 from local Downloads folder, set title + description, publish unlisted",
       "statusNote": "File is ready on Matt's machine",
       "createdAt": "2026-03-17T16:00:00.000Z",
@@ -140,6 +143,7 @@
       "owner": "matt",
       "priority": "high",
       "blockedReason": "Need production FFmpeg build to reproduce — waiting on server credentials from hosting provider",
+      "unblocksWhen": "Hosting provider sends SSH credentials",
       "createdAt": "2026-03-13T10:00:00.000Z",
       "updatedAt": "2026-03-18T09:00:00.000Z"
     },
@@ -151,6 +155,7 @@
       "owner": "max",
       "priority": "high",
       "blockedReason": "Submitted 2026-03-14. Stripe says 3–5 business days. Nothing to action until approved.",
+      "unblocksWhen": "Stripe approval email received",
       "createdAt": "2026-03-14T12:00:00.000Z",
       "updatedAt": "2026-03-14T12:00:00.000Z"
     },

@@ -15,7 +15,7 @@ interface TaskCardProps {
 const LANE_QUICK_MOVES: Record<Lane, Lane[]> = {
   'inbox':               ['max-now', 'cc-queue', 'needs-matt-computer', 'waiting-matt'],
   'max-now':             ['done', 'cc-queue', 'needs-matt-computer', 'waiting-matt'],
-  'cc-queue':            ['done', 'max-now', 'blocked-external'],
+  'cc-queue':            ['done', 'max-now', 'blocked-external', 'waiting-matt', 'needs-matt-computer'],
   'needs-matt-computer': ['done', 'max-now', 'waiting-matt'],
   'waiting-matt':        ['max-now', 'needs-matt-computer', 'done'],
   'blocked-external':    ['max-now', 'cc-queue', 'needs-matt-computer'],
@@ -38,7 +38,8 @@ export function TaskCard({ task, onEdit, isNext = false }: TaskCardProps) {
     if (lane === 'blocked-external') {
       const reason = window.prompt('What is the external blocker?', task.blockedReason ?? '');
       if (reason === null) return;
-      startTransition(() => moveTask(task.id, lane, reason));
+      const unblocksWhen = window.prompt('Unblocks when?', task.unblocksWhen ?? '') ?? '';
+      startTransition(() => moveTask(task.id, lane, reason, unblocksWhen || undefined));
     } else {
       startTransition(() => moveTask(task.id, lane));
     }
@@ -85,6 +86,13 @@ export function TaskCard({ task, onEdit, isNext = false }: TaskCardProps) {
         <OwnerBadge owner={task.owner} />
       </div>
 
+      {/* computerContext badge — needs-matt-computer */}
+      {task.computerContext && (
+        <span className="text-[11px] text-blue-300 bg-blue-950/60 border border-blue-800 rounded px-1.5 py-0.5 self-start leading-none">
+          ⌨ {task.computerContext}
+        </span>
+      )}
+
       {/* Required action — shown prominently for routing lanes */}
       {task.requiredAction && (
         <p className="text-xs text-white/80 leading-snug bg-neutral-700 rounded px-2 py-1">
@@ -121,7 +129,12 @@ export function TaskCard({ task, onEdit, isNext = false }: TaskCardProps) {
 
       {/* External blocker */}
       {task.blockedReason && (
-        <p className="text-xs text-red-400 leading-snug">✕ {task.blockedReason}</p>
+        <div className="flex flex-col gap-0.5">
+          <p className="text-xs text-red-400 leading-snug">✕ {task.blockedReason}</p>
+          {task.unblocksWhen && (
+            <p className="text-xs text-neutral-400 leading-snug">→ Unblocks when: {task.unblocksWhen}</p>
+          )}
+        </div>
       )}
 
       {/* Quick-move buttons (hover) */}

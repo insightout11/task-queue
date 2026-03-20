@@ -161,16 +161,42 @@ export function TaskModal({ task, onClose }: TaskModalProps) {
             </div>
           )}
 
-          {/* Blocked External reason */}
-          {(isBlockedExternal || task?.blockedReason) && (
+          {/* Needs Matt at Computer — computerContext */}
+          {(lane === 'needs-matt-computer' || task?.computerContext) && (
             <div>
-              <label className={isBlockedExternal ? labelWarn : label}>External Blocker</label>
+              <label className={lane === 'needs-matt-computer' ? labelWarn : label}>
+                ⌨ Computer context
+              </label>
               <input
-                name="blockedReason"
-                defaultValue={task?.blockedReason ?? ''}
-                className={isBlockedExternal ? inputWarn : input}
-                placeholder="What is stopped, and why"
+                name="computerContext"
+                defaultValue={task?.computerContext ?? ''}
+                className={lane === 'needs-matt-computer' ? inputWarn : input}
+                placeholder="e.g. browser + login, local file, terminal"
               />
+            </div>
+          )}
+
+          {/* Blocked External reason + unblocks-when */}
+          {(isBlockedExternal || task?.blockedReason) && (
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className={isBlockedExternal ? labelWarn : label}>External Blocker</label>
+                <input
+                  name="blockedReason"
+                  defaultValue={task?.blockedReason ?? ''}
+                  className={isBlockedExternal ? inputWarn : input}
+                  placeholder="What is stopped, and why"
+                />
+              </div>
+              <div>
+                <label className={isBlockedExternal ? labelWarn : label}>Unblocks when</label>
+                <input
+                  name="unblocksWhen"
+                  defaultValue={task?.unblocksWhen ?? ''}
+                  className={isBlockedExternal ? inputWarn : input}
+                  placeholder="What event resolves this blocker"
+                />
+              </div>
             </div>
           )}
 

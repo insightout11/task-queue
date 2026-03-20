@@ -1,6 +1,6 @@
 # Task Queue — Operating Model
 
-**Version:** 2
+**Version:** 3
 **Authors:** Max, Matt
 **Purpose:** This queue answers one question: *what can happen next, who can do it, and what kind of action path does it need?*
 
@@ -58,7 +58,9 @@ Tasks missing either field will show a "not CC-ready" warning on the card.
 **Icon:** ⌨
 **Purpose:** Tasks that require Matt to be physically at a device. Cannot be resolved by chat alone.
 **Examples:** Browser attach, Stripe login, local file upload/download, copy-paste from a local machine, running a local test.
-**Field:** `requiredAction` — describes exactly what Matt needs to do at the computer.
+**Fields:**
+- `requiredAction` — describes exactly what Matt needs to do at the computer
+- `computerContext` — compact "what's needed" tag shown as a badge on the card (e.g. `browser + login`, `local file`, `terminal`)
 **Rule:** If Matt can resolve it by replying in chat, it belongs in *Waiting on Matt*, not here.
 **Ordering:** Sorted by `order` field first, then priority.
 
@@ -80,7 +82,9 @@ Tasks missing either field will show a "not CC-ready" warning on the card.
 **Icon:** ✕
 **Purpose:** Tasks blocked by something outside Max/Matt/Claude Code.
 **Examples:** Provider outage, Stripe approval pending, third-party credentials not yet available, deploy pipeline broken, pending external review.
-**Field:** `blockedReason` — what exactly is blocked and why.
+**Fields:**
+- `blockedReason` — what exactly is blocked and why
+- `unblocksWhen` — what event resolves this blocker (shows on card as "→ Unblocks when: …")
 **Rule:** Nothing to action here. Items move out when the external blocker resolves.
 **Ordering:** Sorted by most recently updated.
 
@@ -117,7 +121,9 @@ interface Task {
   specPath?: string;        // path to spec/prompt file — required for CC Queue
   sourcePath?: string;      // path to source code being referenced
   blockedReason?: string;   // what is the external blocker (Blocked External)
+  unblocksWhen?: string;    // what event resolves the blocker (Blocked External)
   requiredAction?: string;  // what specifically needs to happen (Needs Matt / Waiting on Matt)
+  computerContext?: string; // compact "what's needed" tag (Needs Matt at Computer)
   definitionOfDone?: string; // clear done criteria — required for CC Queue
   createdAt: string;        // ISO 8601
   updatedAt: string;        // ISO 8601
@@ -166,11 +172,52 @@ Tasks in CC Queue missing either field show a `⚠ Not CC-ready` warning. They s
 |------|-------------|
 | Inbox | Max Can Do Now, CC Queue, Needs Matt, Waiting on Matt |
 | Max Can Do Now | Done, CC Queue, Needs Matt, Waiting on Matt |
-| CC Queue | Done, Max Can Do Now, Blocked External |
+| CC Queue | Done, Max Can Do Now, Blocked External, Waiting on Matt, Needs Matt at Computer |
 | Needs Matt at Computer | Done, Max Can Do Now, Waiting on Matt |
 | Waiting on Matt | Max Can Do Now, Needs Matt, Done |
 | Blocked External | Max Can Do Now, CC Queue, Needs Matt |
 | Done | Max Can Do Now, CC Queue |
+
+Moving to Blocked External prompts for both `blockedReason` and `unblocksWhen` (unblocks-when is optional — empty input is skipped).
+
+---
+
+## Filtering & Views
+
+The board supports URL-based filtering. All params stack (AND logic) except where noted below.
+
+### Filter params
+
+| Param | Effect |
+|-------|--------|
+| `q` | Text search on task title |
+| `project` | Filter to one project |
+| `owner` | Filter to one owner |
+| `priority` | Filter to one priority (high / medium / low) |
+| `lane` | Filter to one lane |
+| `view` | Quick view preset (see below) |
+
+### Quick views
+
+| View | Effect |
+|------|--------|
+| `max-only` | Lane scope: `max-now` only |
+| `needs-matt` | Lane scope: `needs-matt-computer` + `waiting-matt` |
+| `at-computer` | Lane scope: `needs-matt-computer` only |
+| `next-up` | Shows only the first item per actionable lane, from the currently filtered set |
+
+### Filter precedence
+
+1. `view` — overrides `lane` for lane-scope decisions
+2. `lane` — ignored when `view` is active
+3. `priority`, `owner`, `q` — always applied on top of whatever lane scope is active
+4. `view=next-up` — applied last, after all other filters, trimming each actionable lane to its first item
+
+This means: `?view=next-up&priority=high` shows the first high-priority item per actionable lane. `?view=needs-matt&priority=high` shows only high-priority tasks in the two Matt lanes.
+
+### Inbox routing note
+
+Inbox should be cleared within a session, not allowed to accumulate. Every Inbox item needs a next action: route it or delete it.
 
 ---
 

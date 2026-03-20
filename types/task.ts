@@ -31,10 +31,14 @@ export interface Task {
   specPath?: string;       // spec / prompt file — required for CC Queue
   sourcePath?: string;
   blockedReason?: string;  // what is the external blocker
+  unblocksWhen?: string;   // blocked-external: what event resolves this
   requiredAction?: string; // what specifically needs to happen (Needs Matt / Waiting on Matt)
+  computerContext?: string; // needs-matt-computer: short "what's needed" (e.g. "browser + login", "local file", "terminal")
   definitionOfDone?: string; // clear done criteria — required for CC Queue
   createdAt: string;
   updatedAt: string;
+
+  // Future priority signals (not yet built): roi, unlockValue, dependencyOf
 }
 
 export const LANES: Lane[] = [

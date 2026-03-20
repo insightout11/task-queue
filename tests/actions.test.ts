@@ -76,11 +76,26 @@ describe('moveTask', () => {
     expect(mockTasks[0].blockedReason).toBe('Waiting on Stripe');
   });
 
+  it('sets unblocksWhen when moving to blocked-external', async () => {
+    mockTasks = [makeTask({ id: 'T-0001', lane: 'max-now' })];
+    await moveTask('T-0001', 'blocked-external', 'Waiting on Stripe', 'Stripe approval email received');
+    expect(mockTasks[0].lane).toBe('blocked-external');
+    expect(mockTasks[0].blockedReason).toBe('Waiting on Stripe');
+    expect(mockTasks[0].unblocksWhen).toBe('Stripe approval email received');
+  });
+
   it('clears blockedReason when moving out of blocked-external', async () => {
     mockTasks = [makeTask({ id: 'T-0001', lane: 'blocked-external', blockedReason: 'Old reason' })];
     await moveTask('T-0001', 'max-now');
     expect(mockTasks[0].lane).toBe('max-now');
     expect(mockTasks[0].blockedReason).toBeUndefined();
+  });
+
+  it('clears unblocksWhen when moving out of blocked-external', async () => {
+    mockTasks = [makeTask({ id: 'T-0001', lane: 'blocked-external', blockedReason: 'Old reason', unblocksWhen: 'Credentials arrive' })];
+    await moveTask('T-0001', 'max-now');
+    expect(mockTasks[0].lane).toBe('max-now');
+    expect(mockTasks[0].unblocksWhen).toBeUndefined();
   });
 
   it('clears order when moving to a new lane', async () => {

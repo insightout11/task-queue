@@ -20,7 +20,9 @@ export const CreateTaskSchema = z.object({
   specPath:        z.string().max(500).optional(),
   sourcePath:      z.string().max(500).optional(),
   blockedReason:   z.string().max(500).optional(),
+  unblocksWhen:    z.string().max(500).optional(),
   requiredAction:  z.string().max(500).optional(),
+  computerContext: z.string().max(200).optional(),
   definitionOfDone: z.string().max(1000).optional(),
 });
 

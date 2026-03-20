@@ -34,7 +34,7 @@ export async function updateTask(formData: FormData) {
   revalidatePath('/', 'layout');
 }
 
-export async function moveTask(id: string, lane: Lane, blockedReason?: string) {
+export async function moveTask(id: string, lane: Lane, blockedReason?: string, unblocksWhen?: string) {
   const tasks = readTasks();
   const idx = tasks.findIndex((t) => t.id === id);
   if (idx === -1) throw new Error(`Task ${id} not found`);
@@ -43,6 +43,7 @@ export async function moveTask(id: string, lane: Lane, blockedReason?: string) {
     lane,
     order: undefined,       // clear explicit order when moving to a new lane
     blockedReason: lane === 'blocked-external' ? blockedReason : undefined,
+    unblocksWhen: lane === 'blocked-external' ? unblocksWhen : undefined,
     updatedAt: new Date().toISOString(),
   };
   writeTasks(tasks);
