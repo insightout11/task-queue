@@ -12,6 +12,7 @@ import { TaskModal } from '@/components/TaskModal';
 interface BoardProps {
   tasks: Task[];
   storePath: string;
+  boardLabel?: string;
 }
 
 function fmtSaved(d: Date): string {
@@ -25,7 +26,7 @@ function displayPath(p: string): string {
   return p;
 }
 
-export function Board({ tasks, storePath }: BoardProps) {
+export function Board({ tasks, storePath, boardLabel }: BoardProps) {
   const [editingTask, setEditingTask] = useState<Task | null | 'new'>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const searchParams = useSearchParams();
@@ -94,6 +95,11 @@ export function Board({ tasks, storePath }: BoardProps) {
 
       {/* Source indicator */}
       <div className="flex items-center gap-2 pt-2 border-t border-neutral-800 flex-shrink-0 mt-2">
+        {boardLabel && (
+          <span className="text-[11px] font-semibold text-indigo-400 flex-shrink-0 uppercase tracking-wide">
+            {boardLabel}
+          </span>
+        )}
         <span className="text-[11px] text-neutral-600 font-mono truncate flex-1" title={storePath}>
           ⊞ {storePath}
         </span>

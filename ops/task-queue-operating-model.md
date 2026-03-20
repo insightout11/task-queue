@@ -1,6 +1,6 @@
 # Task Queue — Operating Model
 
-**Version:** 4
+**Version:** 5
 **Authors:** Max, Matt
 **Purpose:** This queue answers one question: *what can happen next, who can do it, and what kind of action path does it need?*
 
@@ -221,47 +221,129 @@ Inbox should be cleared within a session, not allowed to accumulate. Every Inbox
 
 ---
 
+## Canonical host — MiniPC
+
+The MiniPC is the single canonical host for the live task queue.
+
+| What | Where |
+|------|-------|
+| Canonical host | MiniPC |
+| Canonical store | `/home/matt/clawd/ops/task-queue.json` |
+| Live board URL | `http://<minipc-lan-ip>:3456` |
+| Board label shown in UI | `MINIPC` (indigo badge, bottom of board) |
+
+The laptop is a **client only**. It accesses the board via browser. It does not run its own board instance. It does not have a live queue store.
+
+---
+
 ## Source of truth
 
-- **Canonical file:** `~/clawd/ops/task-queue.json` — lives **outside any git repo**, in your home directory
+- **Canonical file:** `~/clawd/ops/task-queue.json` — resolves to `/home/matt/clawd/ops/task-queue.json` on the MiniPC
+- **Lives outside any git repo** — not in the task-queue clone directory
 - **Format:** `{ "tasks": Task[] }` — flat array, no nesting
-- **Write strategy:** Write to `.tmp` then `renameSync` to avoid partial-write corruption
-- **No database:** Intentional. Single-user, synchronous I/O, always inspectable.
+- **Write strategy:** Write to `.tmp` then `renameSync` — atomic, safe on crash
 
 ### How saves work
 
-Every mutation (move, edit, create, delete) writes directly to the canonical file immediately. No git push required. The UI shows the source path and a "Saved HH:MM:SS" timestamp at the bottom of the board after each change.
-
-### How to run
-
-```
-cd task-queue
-npm run dev
-```
-
-Open `http://localhost:3000`. One running instance = one board = one truth.
-
-### Custom path
-
-Override the canonical path by setting `TASK_QUEUE_FILE` in `.env.local`:
-
-```
-TASK_QUEUE_FILE=/path/to/your/task-queue.json
-```
+Every mutation (move, edit, create, delete) writes directly to the canonical file immediately. No git push required. The board footer shows:
+- The canonical file path
+- `MINIPC` label (on the hosted instance)
+- `Saved HH:MM:SS` after each change
 
 ### Git — optional snapshots only
 
-Git is **not** in the normal read/write path. The repo contains:
-- The app source code
-- `ops/task-queue.json` — **legacy/snapshot only** (used once for initial migration)
-
-After first launch, the app migrates `ops/task-queue.json` → `~/clawd/ops/task-queue.json` automatically. The repo file is then stale — do not treat it as the live queue.
+Git is **not** in the normal read/write path.
 
 Use git for:
-- Deploying app code changes
-- Explicit snapshots of the queue state (optional, manual)
+- Deploying app code changes (pull on MiniPC, rebuild)
+- Explicit snapshots of queue state (optional, manual)
 
-Do **not** use git for:
-- Routine task updates
-- Lane moves
-- Daily queue use
+Do **not** use git for routine task updates, lane moves, or daily use.
+
+`ops/task-queue.json` in the repo is **legacy/seed only** — used once for initial migration, then stale.
+
+---
+
+## MiniPC setup
+
+### First time
+
+```bash
+# On MiniPC, as user matt
+git clone <repo-url> ~/task-queue
+cd ~/task-queue
+npm install
+npm run build
+
+# Install PM2 globally if not already installed
+npm install -g pm2
+
+# Start the board
+pm2 start ecosystem.config.cjs
+
+# Persist across reboots
+pm2 save
+pm2 startup   # follow the printed command to register the systemd service
+```
+
+The canonical store (`~/clawd/ops/task-queue.json`) is created automatically on first use, migrated from `ops/task-queue.json` in the repo.
+
+### After code updates
+
+```bash
+cd ~/task-queue
+git pull
+npm run build
+pm2 restart task-queue
+```
+
+### Verify it's running
+
+```bash
+pm2 status
+pm2 logs task-queue
+```
+
+Board runs at `http://localhost:3456` on the MiniPC.
+
+---
+
+## Laptop access
+
+Open `http://<minipc-lan-ip>:3456` in any browser on the laptop.
+
+To find the MiniPC's LAN IP:
+```bash
+# On MiniPC
+hostname -I | awk '{print $1}'
+```
+
+Bookmark that URL on the laptop. That URL **is** the real board. There is no other real board.
+
+---
+
+## What is NOT the live queue
+
+| Thing | Status |
+|-------|--------|
+| `task-queue/ops/task-queue.json` in the git repo | Legacy/seed only — stale after first launch |
+| A `npm run dev` instance on the laptop | Not canonical — dev convenience only |
+| Any local clone's data store | Not the live queue |
+
+If you see the board UI without a `MINIPC` label in the footer, you are not on the canonical board.
+
+---
+
+## Configuration
+
+### Port
+
+Default: `3456` (set in `ecosystem.config.cjs`).
+
+### Custom store path
+
+Override in `.env.local` on the MiniPC (not committed to git):
+```
+TASK_QUEUE_FILE=/home/matt/clawd/ops/task-queue.json
+```
+This is only needed if the default (`~/clawd/ops/task-queue.json`) resolves wrongly.

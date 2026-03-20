@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export default function Home() {
   const tasks = readTasks();
   const storePath = getStorePath();
+  const boardLabel = process.env.BOARD_LABEL ?? '';
 
   return (
     <div className="flex flex-col h-full p-4">
@@ -16,7 +17,7 @@ export default function Home() {
       </header>
       <div className="flex flex-col flex-1 min-h-0">
         <Suspense>
-          <Board tasks={tasks} storePath={storePath} />
+          <Board tasks={tasks} storePath={storePath} boardLabel={boardLabel} />
         </Suspense>
       </div>
     </div>
